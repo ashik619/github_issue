@@ -28,7 +28,7 @@ public class CommentListAdapter extends ArrayAdapter<Comment> {
         final Comment comment = getItem(position);
 
         if (convertView == null) {
-            convertView = LayoutInflater.from(getContext()).inflate(R.layout.home_list_item, parent, false);
+            convertView = LayoutInflater.from(getContext()).inflate(R.layout.comment_list_item, parent, false);
         }
         TextView casetitle = (TextView) convertView.findViewById(R.id.titleView);
         TextView bodyView = (TextView) convertView.findViewById(R.id.bodyView);

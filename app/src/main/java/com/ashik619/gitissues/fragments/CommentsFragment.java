@@ -1,7 +1,9 @@
-package com.ashik619.gitissues;
+package com.ashik619.gitissues.fragments;
+
 
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
+import android.support.v4.app.Fragment;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
@@ -10,23 +12,32 @@ import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-import com.ashik619.gitissues.io.GetJsonAsyncTask;
-import com.ashik619.gitissues.io.GetOnTaskCompleted;
+import com.ashik619.gitissues.CommentListAdapter;
+import com.ashik619.gitissues.R;
+import com.ashik619.gitissues.io.HttpServerBackend;
+import com.ashik619.gitissues.io.RestAdapter;
 import com.ashik619.gitissues.models.Comment;
 import com.ashik619.gitissues.models.HomeList;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import org.greenrobot.eventbus.EventBus;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
-import java.net.URL;
 import java.util.ArrayList;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import retrofit2.Call;
 
-public class DetailsActivity extends AppCompatActivity implements GetOnTaskCompleted {
+/**
+ * A simple {@link Fragment} subclass.
+ */
+public class CommentsFragment extends Fragment {
+
+
+    public CommentsFragment() {
+        // Required empty public constructor
+    }
     ArrayList<Comment> commentArrayList = new ArrayList<Comment>();
     @BindView(R.id.titleView)
     TextView titleView;
@@ -41,53 +52,48 @@ public class DetailsActivity extends AppCompatActivity implements GetOnTaskCompl
     LinearLayout mainLayout;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_details);
-        ButterKnife.bind(this);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        View rootView = inflater.inflate(R.layout.fragment_comments, container, false);
+        ButterKnife.bind(this,rootView);
         homeList = EventBus.getDefault().getStickyEvent(HomeList.class);
         getAllCommentsApiCall();
-
+        return rootView;
     }
-
-    void getAllCommentsApiCall() {
-        try {
-            System.out.println("calling api");
-
-            URL url = new URL(homeList.commentsUrl);
-            GetJsonAsyncTask task2 = new GetJsonAsyncTask(this, url);
-            task2.execute("");
-        } catch (Exception e) {
-        }
-    }
-
     @Override
-    public void GetOnTaskCompleted(String response) {
-        if (response != null) {
-            try {
-                System.out.println(response);
-                JSONArray jsonArray = new JSONArray(response);
-                for (int i = 0; i < jsonArray.length(); i++) {
-                    JSONObject issue = jsonArray.getJSONObject(i);
-                    Comment comment = new Comment();
-                    comment.userName = issue.getJSONObject("user").getString("login");
-                    comment.commentText = issue.getString("body");
-                    commentArrayList.add(comment);
-                }
+    public void onResume(){
+        super.onResume();
+        getAllCommentsApiCall();
+    }
+    void getAllCommentsApiCall() {
+        Call<JsonArray> call = new RestAdapter().getRestInterface().getComments(String.valueOf(homeList.number));
+        new HttpServerBackend(getContext()).getData(call, new HttpServerBackend.ResponseListener() {
+            @Override
+            public void onReturn(boolean success, JsonArray data, int message) {
+                super.onReturn(success, data, message);
                 loadingLayout.setVisibility(View.GONE);
-                populateListView();
+                System.out.println(message);
+                if (success) {
+                    for (int i = 0; i < data.size(); i++) {
+                        JsonObject commentObject = data.get(i).getAsJsonObject();
+                        Comment comment = new Comment();
+                        comment.userName = commentObject.getAsJsonObject("user").get("login").getAsString();
+                        comment.commentText = commentObject.get("body").getAsString();
+                        commentArrayList.add(comment);
+                        populateListView();
+                    }
 
-            } catch (JSONException e) {
-                e.printStackTrace();
+                } else {
+                }
             }
-        }
+        });
     }
 
     void populateListView() {
         mainLayout.setVisibility(View.VISIBLE);
         titleView.setText(homeList.title);
         bodyView.setText(homeList.body);
-        CommentListAdapter commentListAdapter = new CommentListAdapter(DetailsActivity.this, commentArrayList);
+        CommentListAdapter commentListAdapter = new CommentListAdapter(getContext(), commentArrayList);
         listView.setAdapter(commentListAdapter);
         setListViewHeightBasedOnChildren(listView);
 
@@ -116,5 +122,7 @@ public class DetailsActivity extends AppCompatActivity implements GetOnTaskCompl
         listView.setLayoutParams(params);
         listView.requestLayout();
     }
+
+
 
 }

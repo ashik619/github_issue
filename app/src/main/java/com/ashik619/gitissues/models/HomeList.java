@@ -6,5 +6,6 @@ package com.ashik619.gitissues.models;
 public class HomeList {
     public String title;
     public String body;
+    public int number;
     public String commentsUrl;
 }
